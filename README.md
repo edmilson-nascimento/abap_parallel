@@ -9,7 +9,7 @@
 
 > 🗘 Este documento, assim como o negócio, está em constante fase de melhoria e adaptação.
 
- Usando uma interface standard SAP para fazer processamento em paralelismo. A interface de base será 
+ Usando a interface standard SAP `cl_abap_parallel` para fazer processamento em paralelismo. A interface de base será 
  Um dos links de referencia usados é [esse](https://sascha-dev.de/sap-entwicklung/parallelverarbeitung-unter-abap-mit-der-klasse-cl_abap_parallel/).
 
 
