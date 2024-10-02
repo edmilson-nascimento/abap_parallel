@@ -16,9 +16,7 @@
  Usando a interface standard SAP `cl_abap_parallel` para fazer processamento em paralelismo. A interface de base será 
  Um dos links de referencia usados é [esse](https://sascha-dev.de/sap-entwicklung/parallelverarbeitung-unter-abap-mit-der-klasse-cl_abap_parallel/).
 
-
-
- ~~no momento, eu penso que seja uma boa ideia fazer disso um post no SAP Blogs, mas essa animação vai por agua em alguns dias~~
+~~no momento, eu penso que seja uma boa ideia fazer disso um post no SAP Blogs, mas essa animação vai por agua em alguns dias~~
 
 
 ## Glossário
