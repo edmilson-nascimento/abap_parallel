@@ -1,9 +1,13 @@
 # ABAP parallel
  
+![N|Solid](img/sap-abap.jpeg)
+
 ![Static Badge](https://img.shields.io/badge/development-abap-blue)
 ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/t/edmilson-nascimento/abap_parallel)
 ![Static Badge](https://img.shields.io/badge/gabriel_alencar-abap-orange)
 ![Static Badge](https://img.shields.io/badge/poo-abap-teal)
+![Static Badge](https://img.shields.io/badge/murilo_borges-abap-lime)
+
 
  Paralelismo.
 
