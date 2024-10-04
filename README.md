@@ -53,4 +53,3 @@ write:/ 'Hello parallel' .
 ## Pontos de atenção 📝
 
 - Quase ninguém fez isso, então, claro que nos (eu e ~~as vozes~~ os algoritmos na minha cabeça) vamos fazer
-- 
