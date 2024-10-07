@@ -23,7 +23,7 @@
 
 | Sigla | Significado | Descrição |
 |-----|-----------|------------|
-| BC |Business Consulting | ~~Find Clarity in Chaos~~ ABAP, Desenvolvedor SAP, Consultor ABAP, SAP DEV|
+| BC |Business Consultant | ~~Find Clarity in Chaos~~ ABAP, Desenvolvedor SAP, Consultor ABAP, SAP DEV|
  FM | Function Module ||
 
 ## Fluxo da solução
