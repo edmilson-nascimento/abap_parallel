@@ -18,6 +18,7 @@
 
 ~~no momento, eu penso que seja uma boa ideia fazer disso um post no SAP Blogs, mas essa animação vai por agua em alguns dias~~
 
+https://www.sapignite.com/learn-parallel-processing-in-abap/
 
 ## Glossário
 
