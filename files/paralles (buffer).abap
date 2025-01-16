@@ -1,4 +1,157 @@
 REPORT zmodel_alv.
+*" Define structure
+*TYPES:
+*  BEGIN OF ty_struct1,
+*    field1 TYPE i,
+*    field2 TYPE string,
+*  END OF ty_struct1,
+*  BEGIN OF ty_struct2,
+*    field1 TYPE i,
+*    field2 TYPE string,
+*    field3 TYPE i,
+*  END OF ty_struct2.
+*
+*" Define table types
+*TYPES: gtt_struct1 TYPE STANDARD TABLE OF ty_struct1 WITH DEFAULT KEY,
+*       gtt_struct2 TYPE STANDARD TABLE OF ty_struct2 WITH DEFAULT KEY.
+*
+*" Initialize source table with some random values
+*DATA(lt_source) = VALUE gtt_struct1( ( field1 = 1 field2 = 'A' )
+*                                     ( field1 = 2 field2 = 'B' )
+*                                     ( field1 = 2 field2 = 'C' )
+*                                     ( field1 = 2 field2 = 'D' )
+*                                     ( field1 = 2 field2 = 'E' ) ).
+*
+*" Populate sy-tabix in the additional fields within the for loop
+*DATA(lt_target2) = VALUE gtt_struct2( FOR lwa_source IN lt_source
+*                                          INDEX INTO index
+*                                      LET base = VALUE ty_struct2( field3 = index )
+*                                      IN  ( CORRESPONDING #( BASE ( base ) lwa_source ) ) ).
+*
+*cl_demo_output=>display( lt_target2 ).
+
+
+CLASS material DEFINITION CREATE PUBLIC.
+
+  PUBLIC SECTION.
+
+    TYPES:
+      BEGIN OF ty_data,
+        material  TYPE bapimathead-material,
+        matl_desc TYPE bapi_makt-matl_desc,
+      END OF ty_data,
+      tab_data TYPE STANDARD TABLE OF ty_data WITH DEFAULT KEY.
+
+    METHODS constructor
+      IMPORTING im_material TYPE matnr
+                im_desc     TYPE makt-maktx.
+
+    CLASS-METHODS list
+      RETURNING VALUE(result) TYPE table_matnr.
+
+    CLASS-METHODS get
+      IMPORTING im_material   TYPE matnr
+      RETURNING VALUE(result) TYPE bapimatdoa.
+
+    METHODS change
+      RETURNING VALUE(result) TYPE bapiret2.
+
+  PRIVATE SECTION.
+
+    DATA:
+      gs_data        TYPE ty_data,
+      gs_header      TYPE bapimathead,
+      gt_description TYPE tt_bapi_makt.
+
+    METHODS fill.
+
+    METHODS bapi
+      RETURNING VALUE(result) TYPE bapiret2.
+
+ENDCLASS.
+
+CLASS material IMPLEMENTATION.
+
+  METHOD constructor.
+
+    me->gs_data = VALUE #( material  = im_material
+                           matl_desc = im_desc ).
+
+  ENDMETHOD.
+
+
+  METHOD list.
+
+    SELECT FROM mara
+    FIELDS matnr
+    INTO TABLE @result
+    UP TO 3 ROWS.
+
+  ENDMETHOD.
+
+
+  METHOD get.
+
+    DATA:
+      material_general_data TYPE bapimatdoa,
+      return                TYPE bapireturn.
+
+    IF im_material IS INITIAL .
+      RETURN .
+    ENDIF.
+
+    CALL FUNCTION 'BAPI_MATERIAL_GET_DETAIL'
+      EXPORTING
+        material              = im_material
+      IMPORTING
+        material_general_data = material_general_data
+        return                = return.
+
+    IF return-type = if_xo_const_message=>error .
+      RETURN .
+    ENDIF .
+
+    result = material_general_data .
+
+
+  ENDMETHOD.
+
+
+  METHOD change.
+
+    me->fill( ).
+
+    IF    me->gs_header               IS INITIAL
+       OR lines( me->gt_description )  = 0.
+      RETURN.
+    ENDIF.
+
+    result = me->bapi( ).
+
+  ENDMETHOD.
+
+
+  METHOD fill.
+
+    me->gs_header      = VALUE #( material = |{ me->gs_data-material ALPHA = OUT }| ).
+    me->gt_description = VALUE #( ( langu     = sy-langu
+                                    matl_desc = me->gs_data-matl_desc ) ).
+
+  ENDMETHOD.
+
+  METHOD bapi.
+
+    CALL FUNCTION 'BAPI_MATERIAL_SAVEDATA'
+      EXPORTING
+        headdata            = me->gs_header
+      IMPORTING
+        return              = result
+      TABLES
+        materialdescription = me->gt_description.
+
+  ENDMETHOD.
+
+ENDCLASS.
 
 
 CLASS main DEFINITION.
@@ -15,7 +168,14 @@ CLASS main DEFINITION.
       BEGIN OF task_result,
         carrid TYPE scarr-carrid,
         count  TYPE i,
-      END OF task_result.
+      END OF task_result,
+
+      single_record_material TYPE mara-matnr,
+
+      BEGIN OF task_result_material,
+        material TYPE mara-matnr,
+        data     TYPE bapimatdoa,
+      END OF task_result_material.
 
     CLASS-METHODS process.
 
@@ -30,42 +190,53 @@ CLASS single_task DEFINITION
 
 ENDCLASS.
 
-*This is the only statement outside of the classes
-main=>process( ).
 
 CLASS main IMPLEMENTATION.
 
   METHOD process.
 
-    DATA: tasks_input        TYPE cl_abap_parallel=>t_in_tab,
-          task_input_single  TYPE xstring,
-          single_record      TYPE single_record,
-          tasks_input_shared TYPE xstring,
-          shared_record      TYPE shared_record,
-          task_result        TYPE task_result.
+    DATA: tasks_input            TYPE cl_abap_parallel=>t_in_tab,
+          task_input_single      TYPE xstring,
+          single_record          TYPE single_record,
+          tasks_input_shared     TYPE xstring,
+          shared_record          TYPE shared_record,
+          task_result            TYPE task_result,
+
+          single_record_material TYPE single_record_material,
+          task_result_material   TYPE task_result_material
+          .
 
     shared_record-process_mode = 1.
+    shared_record-process_mode = 2.
 
 *   Since the process_mode value is shared across all tasks, store
 *   it in the shared variable (tasks_input_shared) instead of
 *   repeating it for every task input record (tasks_input)
 
 *   To be imported by SINGLE_TASK->DO
+*    EXPORT buffer_task_shared = shared_record
+*      TO DATA BUFFER tasks_input_shared.
     EXPORT buffer_task_shared = shared_record
       TO DATA BUFFER tasks_input_shared.
 
 *   Get data to be processed.  EXPORT each record and collect them all into
 *   table tasks_input.
-    SELECT
-     carrid
-    FROM scarr
-    INTO @single_record.
+*    SELECT
+*     carrid
+*    FROM scarr
+*    INTO @single_record.
+*
+**     To be imported by SINGLE_TASK->DO
+*      EXPORT buffer_task = single_record TO DATA BUFFER task_input_single.
+*      INSERT task_input_single INTO TABLE tasks_input.
+*
+*    ENDSELECT.
 
 *     To be imported by SINGLE_TASK->DO
-      EXPORT buffer_task = single_record TO DATA BUFFER task_input_single.
+    LOOP AT material=>list( ) INTO single_record_material.
+      EXPORT buffer_task = single_record_material TO DATA BUFFER task_input_single.
       INSERT task_input_single INTO TABLE tasks_input.
-
-    ENDSELECT.
+    ENDLOOP.
 
 *   Create the instance while configuring the resource usage
     DATA(parallel) = NEW single_task(
@@ -97,10 +268,13 @@ CLASS main IMPLEMENTATION.
 
       IF <task_output_single>-result IS NOT INITIAL.
 *       Exported from SINGLE_TASK->DO
-        IMPORT buffer_result = task_result
+*        IMPORT buffer_result = task_result
+*          FROM DATA BUFFER <task_output_single>-result.
+
+        IMPORT buffer_result = task_result_material
           FROM DATA BUFFER <task_output_single>-result.
 
-        WRITE: / task_result-carrid, task_result-count.
+        WRITE: / sy-tabix, '-', task_result_material-material, task_result_material-data-matl_desc .
       ENDIF.
 
     ENDLOOP.
@@ -115,20 +289,29 @@ CLASS single_task IMPLEMENTATION.
 
 *   I referenced the MAIN local class instead of using the data dictionary
 *   for the ease for copy/paste
-    DATA: shared_record TYPE main=>shared_record,
-          single_record TYPE main=>single_record,
-          task_result   TYPE main=>task_result.
+    DATA: shared_record          TYPE main=>shared_record,
+          single_record          TYPE main=>single_record,
+          task_result            TYPE main=>task_result,
+
+          single_record_material TYPE main=>single_record_material,
+          task_result_material   TYPE main=>task_result_material.
 
 *   Exported by MAIN->PROCCESS
     IMPORT buffer_task_shared = shared_record FROM DATA BUFFER p_in_all.
 
 *   Exported by MAIN->PROCCESS
-    IMPORT buffer_task = single_record FROM DATA BUFFER p_in.
+*   IMPORT buffer_task = single_record FROM DATA BUFFER p_in.
+    IMPORT buffer_task = single_record_material FROM DATA BUFFER p_in.
 
 *   Other shared values I like to include are a simulation/update flag
 *   and a level for the logging detail
     CASE shared_record-process_mode.
+
       WHEN '1'.
+
+*        DO 40 TIMES.
+*          WAIT UP TO 1 SECONDS.
+*        ENDDO .
 
 *       Incredibly simplistic example which doesn't warrant parallel processing
         SELECT
@@ -144,14 +327,30 @@ CLASS single_task IMPLEMENTATION.
         ENDSELECT.
 
       WHEN '2'.
+
+        task_result_material-material = single_record_material .
+        task_result_material-data = material=>get( im_material = single_record_material ).
+
     ENDCASE.
 
 *   To be imported by MAIN->PROCESS
-    EXPORT buffer_result = task_result TO DATA BUFFER p_out.
+*   EXPORT buffer_result = task_result TO DATA BUFFER p_out.
+    EXPORT buffer_result = task_result_material TO DATA BUFFER p_out.
 
   ENDMETHOD.
 
 ENDCLASS.
+
+INITIALIZATION.
+
+*This is the only statement outside of the classes
+  main=>process( ).
+
+*  DATA(list) = material=>list( ).
+*  LOOP AT list INTO DATA(material).
+*    DATA(data) = material=>get( im_material = material ) .
+*    WRITE:/ 'Descr', data-matl_desc, 'hora ', sy-uzeit.
+*  ENDLOOP.
 
 
 *
