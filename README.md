@@ -20,6 +20,10 @@
 
 https://www.sapignite.com/learn-parallel-processing-in-abap/
 
+" Ref 
+" https://community.sap.com/t5/application-development-blog-posts/using-class-cl-abap-parallel-for-mass-parallel-dialog-work-processes/ba-p/13579844
+
+
 ## Glossário
 
 | Sigla | Significado | Descrição |
