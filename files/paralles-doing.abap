@@ -54,7 +54,7 @@ CLASS material IMPLEMENTATION.
     SELECT FROM mara
       FIELDS matnr
       INTO TABLE @result
-      UP TO 30000 ROWS.
+      UP TO 3000 ROWS.
 
   ENDMETHOD.
 
@@ -118,6 +118,80 @@ CLASS material IMPLEMENTATION.
 ENDCLASS.
 
 
+CLASS charact DEFINITION CREATE PUBLIC.
+
+  PUBLIC SECTION.
+
+    TYPES:
+      BEGIN OF ty_st_klah,
+        klah_clint TYPE klah-clint,
+        klart      TYPE klah-klart,
+        class      TYPE klah-class,
+        imerk      TYPE ksml-imerk,
+      END OF ty_st_klah,
+      tab_st_klah TYPE STANDARD TABLE OF ty_st_klah WITH DEFAULT KEY.
+
+    CLASS-METHODS prepare_buffer_export.
+    CLASS-METHODS buffer_single.
+
+    CLASS-METHODS prepare_buffer_import.
+
+    CLASS-METHODS selection
+      IMPORTING im_filter TYPE tab_st_klah OPTIONAL.
+
+ENDCLASS.
+
+CLASS charact IMPLEMENTATION.
+
+
+  METHOD prepare_buffer_export.
+  ENDMETHOD.
+
+  METHOD buffer_single.
+  ENDMETHOD.
+
+
+  METHOD prepare_buffer_import.
+  ENDMETHOD.
+
+
+  METHOD selection.
+    " TODO: parameter IM_FILTER is never used (ABAP cleaner)
+
+    CONSTANTS:
+      BEGIN OF filter,
+        mafid TYPE kssk-mafid VALUE 'O',
+        klart TYPE kssk-klart VALUE 'O',
+      END OF filter.
+
+    " TODO: variable is assigned but never used (ABAP cleaner)
+    DATA lt_data  TYPE tt_kssk.
+
+    DATA c_cursor TYPE cursor.
+
+    OPEN CURSOR WITH HOLD @c_cursor FOR
+*   SELECT objek, clint, stdcl
+    SELECT FROM kssk
+      FIELDS *
+*     FOR ALL ENTRIES IN @gt_klah
+      WHERE mafid = @filter-mafid
+        AND klart = @filter-klart
+*      AND clint EQ @gt_klah-klah_clint
+        AND stdcl = @abap_true.
+    DO.
+*     FETCH NEXT CURSOR c_cursor APPENDING CORRESPONDING FIELDS OF TABLE gt_kssk PACKAGE SIZE 15000.
+      FETCH NEXT CURSOR c_cursor APPENDING CORRESPONDING FIELDS OF TABLE lt_data PACKAGE SIZE 15000.
+      IF sy-subrc <> 0.
+        EXIT.
+      ENDIF.
+    ENDDO.
+    CLOSE CURSOR c_cursor.
+
+  ENDMETHOD.
+
+ENDCLASS.
+
+
 CLASS main DEFINITION.
 
   PUBLIC SECTION.
@@ -171,6 +245,7 @@ CLASS main IMPLEMENTATION.
 
     shared_record-process_mode = 1.
     shared_record-process_mode = 2.
+    shared_record-process_mode = 3.
 
     " Since the process_mode value is shared across all tasks, store
     " it in the shared variable (tasks_input_shared) instead of
@@ -181,6 +256,9 @@ CLASS main IMPLEMENTATION.
 *      TO DATA BUFFER tasks_input_shared.
     EXPORT buffer_task_shared = shared_record
            TO DATA BUFFER tasks_input_shared.
+
+    charact=>prepare_buffer_export( ).
+    charact=>selection( ).
 
 *   Get data to be processed.  EXPORT each record and collect them all into
 *   table tasks_input.
@@ -202,7 +280,8 @@ CLASS main IMPLEMENTATION.
     ENDLOOP.
 
     " Create the instance while configuring the resource usage
-    DATA(parallel) = NEW single_task( p_num_tasks = 8
+*   DATA(parallel) = NEW single_task( p_num_tasks = 8
+    DATA(parallel) = NEW single_task( p_num_tasks = 25
 *                                      p_timeout   = 200
 *                                      p_percentage = 50
 *                                      p_num_processes = 20
