@@ -32,7 +32,6 @@ endclass.
 
 LCL_MAIN=>START( PERC ).
 
-
 class LCL_MAIN implementation.
 
   method START ##NEEDED.
