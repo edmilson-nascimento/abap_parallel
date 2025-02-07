@@ -300,61 +300,10 @@ ENDCLASS.
 INITIALIZATION.
 
   " This is the only statement outside of the classes
-**  main=>process( ).
+  main=>process( ).
 
 *  DATA(list) = material=>list( ).
 *  LOOP AT list INTO DATA(material).
 *    DATA(data) = material=>get( im_material = material ) .
 *    WRITE:/ 'Descr', data-matl_desc, 'hora ', sy-uzeit.
 *  ENDLOOP.
-
-
-data:
-  go_dialogbox                   type ref to cl_gui_dialogbox_container,
-  go_editor                      type ref to cl_gui_abapedit.
-
-form showcontent  using    pt_data        type table.
- if go_dialogbox is initial.
-   create object go_dialogbox
-      exporting
-        width                            = 800
-        height                           = 300
-        top                              = 50
-        left                             = 100
-        caption
-          = 'Close Window to end Display'.
-*   set handler lcl_event_receiver=>close for go_dialogbox.
- endif." go_dialogbox is initial.
-
- if go_editor is initial.
-
-   create object go_editor
-     exporting
-       parent                            = go_dialogbox
-*        wordwrap_mode                     =
-*cl_gui_textedit=>wordwrap_off
-*        wordwrap_to_linebreak_mode        = cl_gui_textedit=>true
-.
- endif.
- call method go_editor->set_toolbar_mode
-   exporting
-     toolbar_mode                        = go_editor->true.
-
- call method go_editor->set_statusbar_mode
-   exporting
-     statusbar_mode                      = go_editor->true.
-* Set edit mode
- call method go_editor->set_readonly_mode.
-*   send table to control
-*  call method go_editor->set_font_fixed
-*    exporting
-*      mode                                = cl_gui_textedit=>true.
-*  call method go_editor->set_text_as_r3table
- call method go_editor->set_selected_text_as_table
-   exporting
-     table                               = pt_data.
-* set focus
- call method go_dialogbox->set_focus
-   exporting
-     control                             = go_editor.
-endform.                    " showcontent
