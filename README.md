@@ -64,7 +64,6 @@ write:/ 'Hello parallel' .
 
 Here's a comprehensive README.md for your repository:
 
-```markdown
 # ABAP Parallel Material Processing
 
 ![ABAP Version](https://img.shields.io/badge/ABAP-7.4%2B-brightgreen)
