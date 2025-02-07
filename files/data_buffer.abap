@@ -14,33 +14,33 @@ CLASS material DEFINITION CREATE PUBLIC.
       tab_data TYPE STANDARD TABLE OF ty_data WITH DEFAULT KEY.
 
     "! Constructor for material data
-    "! @parameter im_material Material number
-    "! @parameter im_desc Material description
+    "! parameter im_material Material number
+    "! parameter im_desc Material description
     METHODS constructor
-      IMPORTING
-        im_material TYPE matnr
-        im_desc     TYPE makt-maktx.
+      IMPORTING im_material TYPE matnr
+                im_desc     TYPE makt-maktx.
 
     "! Retrieve list of material numbers
-    "! @returning List of material numbers
+    "! returning List of material numbers
+    "!
+    "! parameter result
     CLASS-METHODS list
-      RETURNING
-        VALUE(result) TYPE table_matnr.
+      RETURNING VALUE(result) TYPE table_matnr.
 
     "! Get material details
-    "! @parameter im_material Material number
-    "! @returning Material details
+    "! parameter im_material Material number
+    "! returning Material details
+    "! parameter result
     CLASS-METHODS get
-      IMPORTING
-        im_material   TYPE matnr
-      RETURNING
-        VALUE(result) TYPE bapimatdoa.
+      IMPORTING im_material   TYPE matnr
+      RETURNING VALUE(result) TYPE bapimatdoa.
 
     "! Change material data
-    "! @returning Operation result
+    "! returning Operation result
+    "!
+    "! parameter result
     METHODS change
-      RETURNING
-        VALUE(result) TYPE bapiret2.
+      RETURNING VALUE(result) TYPE bapiret2.
 
   PRIVATE SECTION.
     DATA:
@@ -52,27 +52,26 @@ CLASS material DEFINITION CREATE PUBLIC.
     METHODS fill.
 
     "! Execute material save BAPI
-    "! @returning Operation result
+    "! returning Operation result
+    "!
+    "! parameter result
     METHODS bapi
-      RETURNING
-        VALUE(result) TYPE bapiret2.
+      RETURNING VALUE(result) TYPE bapiret2.
 
 ENDCLASS.
 
 CLASS material IMPLEMENTATION.
 
   METHOD constructor.
-    gs_data = VALUE #(
-      material  = im_material
-      matl_desc = im_desc
-    ).
+    gs_data = VALUE #( material  = im_material
+                       matl_desc = im_desc ).
   ENDMETHOD.
 
   METHOD list.
     SELECT FROM mara
       FIELDS matnr
       INTO TABLE @result
-      UP TO 3000 ROWS.
+      UP TO 30000 ROWS.
   ENDMETHOD.
 
   METHOD get.
@@ -83,13 +82,13 @@ CLASS material IMPLEMENTATION.
     CHECK im_material IS NOT INITIAL.
 
     CALL FUNCTION 'BAPI_MATERIAL_GET_DETAIL'
-      EXPORTING
-        material              = im_material
-      IMPORTING
-        material_general_data = material_general_data
-        return                = return.
+      EXPORTING material              = im_material
+      IMPORTING material_general_data = material_general_data
+                return                = return.
 
-    CHECK return-type NE if_xo_const_message=>error.
+    IF return-type = if_xo_const_message=>error.
+      RETURN.
+    ENDIF.
 
     result = material_general_data.
   ENDMETHOD.
@@ -97,34 +96,27 @@ CLASS material IMPLEMENTATION.
   METHOD change.
     fill( ).
 
-    CHECK
-      gs_header IS NOT INITIAL AND
-      lines( gt_description ) > 0.
+    IF
+          gs_header               IS INITIAL
+       OR lines( gt_description ) <= 0.
+      RETURN.
+    ENDIF.
 
     result = bapi( ).
   ENDMETHOD.
 
   METHOD fill.
-    gs_header = VALUE #(
-      material = |{ gs_data-material ALPHA = OUT }|
-    ).
+    gs_header = VALUE #( material = |{ gs_data-material ALPHA = OUT }| ).
 
-    gt_description = VALUE #(
-      (
-        langu     = sy-langu
-        matl_desc = gs_data-matl_desc
-      )
-    ).
+    gt_description = VALUE #( ( langu     = sy-langu
+                                matl_desc = gs_data-matl_desc ) ).
   ENDMETHOD.
 
   METHOD bapi.
     CALL FUNCTION 'BAPI_MATERIAL_SAVEDATA'
-      EXPORTING
-        headdata            = gs_header
-      IMPORTING
-        return              = result
-      TABLES
-        materialdescription = gt_description.
+      EXPORTING headdata            = gs_header
+      IMPORTING return              = result
+      TABLES    materialdescription = gt_description.
   ENDMETHOD.
 
 ENDCLASS.
@@ -154,7 +146,6 @@ ENDCLASS.
 CLASS single_task DEFINITION INHERITING FROM cl_abap_parallel.
 
   PUBLIC SECTION.
-    "! Override parallel task execution method
     METHODS do REDEFINITION.
 
 ENDCLASS.
@@ -170,48 +161,42 @@ CLASS main IMPLEMENTATION.
       single_record_material TYPE mara-matnr,
       task_result_material   TYPE task_result_material.
 
-    "! Set processing mode
+    " Set processing mode
     shared_record-process_mode = '2'.
 
-    "! Store shared processing mode
-    EXPORT
-      buffer_task_shared = shared_record
+    " Store shared processing mode
+    EXPORT buffer_task_shared = shared_record
       TO DATA BUFFER tasks_input_shared.
 
-    "! Prepare tasks for parallel processing
+    " Prepare tasks for parallel processing
     LOOP AT material=>list( ) INTO single_record_material.
-      EXPORT
-        buffer_task = single_record_material
+      EXPORT buffer_task = single_record_material
         TO DATA BUFFER task_input_single.
       INSERT task_input_single INTO TABLE tasks_input.
     ENDLOOP.
 
-    "! Create parallel processing instance
-    DATA(parallel) = NEW single_task(
-      p_percentage = 30
-    ).
+    " Create parallel processing instance
+    DATA(parallel) = NEW single_task( p_percentage = 30 ).
 
-    "! Execute parallel tasks
-    parallel->run(
-      EXPORTING
-        p_in_tab  = tasks_input
-        p_in_all  = tasks_input_shared
-      IMPORTING
-        p_out_tab = DATA(tasks_output)
-    ).
+    " Execute parallel tasks
+    parallel->run( EXPORTING p_in_tab  = tasks_input
+                             p_in_all  = tasks_input_shared
+                   IMPORTING p_out_tab = DATA(tasks_output) ).
 
-    "! Process task results
+    " Process task results
     LOOP AT tasks_output ASSIGNING FIELD-SYMBOL(<task_output_single>).
-      CHECK <task_output_single>-result IS NOT INITIAL.
+      IF <task_output_single>-result IS INITIAL.
+        CONTINUE.
+      ENDIF.
 
-      IMPORT
-        buffer_result = task_result_material
+      IMPORT buffer_result = task_result_material
         FROM DATA BUFFER <task_output_single>-result.
 
       WRITE: /
         sy-tabix,
-        '-',
+        '|',
         task_result_material-material,
+        '|',
         task_result_material-data-matl_desc.
     ENDLOOP.
 
@@ -227,27 +212,22 @@ CLASS single_task IMPLEMENTATION.
       single_record_material TYPE mara-matnr,
       task_result_material   TYPE main=>task_result_material.
 
-    "! Import shared and task-specific data
-    IMPORT
-      buffer_task_shared = shared_record
+    " Import shared and task-specific data
+    IMPORT buffer_task_shared = shared_record
       FROM DATA BUFFER p_in_all.
 
-    IMPORT
-      buffer_task = single_record_material
+    IMPORT buffer_task = single_record_material
       FROM DATA BUFFER p_in.
 
-    "! Process based on mode
+    " Process based on mode
     CASE shared_record-process_mode.
       WHEN '2'.
         task_result_material-material = single_record_material.
-        task_result_material-data = material=>get(
-          im_material = single_record_material
-        ).
+        task_result_material-data     = material=>get( im_material = single_record_material ).
     ENDCASE.
 
     " Export task result
-    EXPORT
-      buffer_result = task_result_material
+    EXPORT buffer_result = task_result_material
       TO DATA BUFFER p_out.
 
   ENDMETHOD.
