@@ -4,6 +4,11 @@
 REPORT zpo_process_parallel.
 
 *----------------------------------------------------------------------*
+* TABLES & DATA DECLARATIONS
+*----------------------------------------------------------------------*
+TABLES: snwd_po.
+
+*----------------------------------------------------------------------*
 * FORWARD DECLARATIONS
 *----------------------------------------------------------------------*
 CLASS lcl_po_worker DEFINITION DEFERRED.
@@ -114,6 +119,15 @@ CLASS lcl_main DEFINITION.
       IMPORTING e_salv_function.
     CLASS-METHODS display_results.
 ENDCLASS.
+
+*----------------------------------------------------------------------*
+* SELECTION SCREEN
+*----------------------------------------------------------------------*
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
+  SELECT-OPTIONS: so_poid FOR snwd_po-po_id,
+                  so_curr FOR snwd_po-currency_code.
+  PARAMETERS: p_maxrow TYPE i DEFAULT 500 OBLIGATORY.
+SELECTION-SCREEN END OF BLOCK b1.
 
 *----------------------------------------------------------------------*
 * IMPLEMENTATIONS
@@ -351,10 +365,14 @@ CLASS lcl_main IMPLEMENTATION.
         lo_alv_result->get_columns( )->set_optimize( abap_true ).
         lo_alv_result->get_functions( )->set_all( abap_true ).
         
-        " Destaca coluna de status
-        DATA(lo_columns) = lo_alv_result->get_columns( ).
-        DATA(lo_column) = lo_columns->get_column( 'PROCESS_STATUS' ).
-        lo_column->set_icon( abap_true ).
+        " Destaca coluna de status como ícone
+        TRY.
+            DATA(lo_columns) = lo_alv_result->get_columns( ).
+            DATA(lo_column) = CAST cl_salv_column_table( lo_columns->get_column( 'PROCESS_STATUS' ) ).
+            lo_column->set_icon( if_salv_c_bool_sap=>true ).
+          CATCH cx_salv_not_found.
+            " Coluna não encontrada, continua sem ícone
+        ENDTRY.
         
         lo_alv_result->display( ).
         
@@ -363,15 +381,6 @@ CLASS lcl_main IMPLEMENTATION.
     ENDTRY.
   ENDMETHOD.
 ENDCLASS.
-
-*----------------------------------------------------------------------*
-* SELECTION SCREEN
-*----------------------------------------------------------------------*
-SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE TEXT-001.
-  SELECT-OPTIONS: so_poid FOR snwd_po-po_id,
-                  so_curr FOR snwd_po-currency_code.
-  PARAMETERS: p_maxrow TYPE i DEFAULT 500 OBLIGATORY.
-SELECTION-SCREEN END OF BLOCK b1.
 
 *----------------------------------------------------------------------*
 * MAIN PROGRAM
