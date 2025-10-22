@@ -380,6 +380,7 @@ CLASS lcl_main IMPLEMENTATION.
         MESSAGE lx_msg->get_text( ) TYPE 'I'.
     ENDTRY.
   ENDMETHOD.
+  
 ENDCLASS.
 
 *----------------------------------------------------------------------*
