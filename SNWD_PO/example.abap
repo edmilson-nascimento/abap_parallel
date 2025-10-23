@@ -387,4 +387,8 @@ ENDCLASS.
 * MAIN PROGRAM
 *----------------------------------------------------------------------*
 START-OF-SELECTION.
+
   lcl_main=>start( ).
+
+          !row    TYPE salv_de_row
+        !column TYPE salv_de_column .  
